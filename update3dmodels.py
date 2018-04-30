@@ -20,7 +20,7 @@ pcbFP = pcb.getFootprints()
 if pcbFP:
     for w in pcbFP:
         print(w, end=' ')
-        print(w.getParentList()[1])
+        print(w.getValue())
 
 
 fplibtableGlobal = LibTable("/home/karl/.config/kicad/fp-lib-table")

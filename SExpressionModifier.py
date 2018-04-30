@@ -58,7 +58,7 @@ class SExpressionModifier:
                     level += 1
                 elif char is ')' and not in_str:
                     if word:
-                        self._tree[-1].append(Word(word, lineNr, wordStart, wordIsQuoted, level, path, self._tree))
+                        self._tree[-1].append(Word(word, lineNr, wordStart, wordIsQuoted, level, path, self._tree[0]))
                         path[-1] += 1
                         word = ''
                     temp = self._tree.pop()
@@ -68,7 +68,7 @@ class SExpressionModifier:
                     level -= 1
                 elif char in (' ', '\n', '\t') and not in_str:
                     if word:
-                        self._tree[-1].append(Word(word, lineNr, wordStart, wordIsQuoted, level, path, self._tree))
+                        self._tree[-1].append(Word(word, lineNr, wordStart, wordIsQuoted, level, path, self._tree[0]))
                         path[-1] += 1
                         word = ''
                 elif char is '\"':
@@ -182,10 +182,11 @@ class Word:
     def getValue(self):
         if self.path[-1] is not 0:
             return None
-        if not self.getParentList(): # parent list is empty
+        pl = self.getParentList()
+        if not pl: # parent list is empty
             return None
-        if isinstance(self.getParentList()[1], Word):
-            return self.getParentList()[1].word
+        if isinstance(pl[1], Word):
+            return pl[1].word
         else:
             return None
 
