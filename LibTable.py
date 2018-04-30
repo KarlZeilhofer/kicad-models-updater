@@ -16,7 +16,9 @@ class LibTable:
 
     # returns a Word object, which contains the URI
     def getUri(self, nameWordObj):
-        self.sexp.getParentList(nameWordObj)
+        lib = nameWordObj.getParentList()
+        results = findWord(lib, 'uri', 0, True)
+        return results[0].getValue()
 
     def write(self, fileName = fileName):
         self.sexp.writeTree(fileName)
