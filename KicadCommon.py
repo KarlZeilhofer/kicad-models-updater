@@ -75,8 +75,8 @@ class KicadCommon:
         sortedKeys = sorted(self.envVars.keys())
         s = ''
         for k in sortedKeys:
-            s += k
-            s += '='
+            s += k.ljust(30, ' ')
+            s += ' '
             s += self.envVars[k]
             s += '\n'
 

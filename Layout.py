@@ -60,3 +60,6 @@ class Footprint:
 
     def getFpId(self):
         return self.libName + ':' + self.libFP
+
+    def __lt__(self, rhs):
+        return self.getFpId() < rhs.getFpId()

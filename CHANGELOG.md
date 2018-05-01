@@ -27,6 +27,9 @@ Karl Zeilhofer, www.team14.at
 * reordered steps, to get faster errors
 * report missing file of 3D model
 * fixed use of local fp-lib-table
+* refactored main script into a class App
+* add output formatting with ljust()
+
 
 ## TODOs
 * use DebugTrace module (see kicad-partslist-editor)
