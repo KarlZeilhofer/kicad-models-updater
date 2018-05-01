@@ -1,10 +1,11 @@
 kicad-models-updater
 ====================
-A Python Script to Update the 3D Models of a .kicad_pcb File
+Reload the 3D Models in a .kicad_pcb File from the Libraries
 ------------------------------------------------------------
 
-You would like to use this script, if you have modified the 3D models
-in your footprint libraries.
+You would like to use this script, if you have modified many of the 3D models
+in your footprint libraries. Another use could be to get a verbose
+health report regarding footprints and it's libraries.
 
 It takes a `.kicad_pcb` file, laods the used footprints from the
 libraries and modifies the entries for a 3D model in the PCB file
@@ -19,10 +20,10 @@ If you have multiple config paths on your system (e.g. KiCad 4/5 in
 parallel), you have to specify
 one of them with `-c CONFIGPATH`.
 
-## Help
+### Help
 ```
-$ python3 kicad-models-updater.py -h
 usage: kicad-models-updater [-h] [-c CPATH] [-p PPATH] [-f PCBFILE]
+                            [-o OUTPUTFILE] [--version]
 
 Gets paths for 3D models from the used footrints and updates it in the
 .kicad_pcb file without changing any other properties in the layout.
@@ -39,7 +40,14 @@ optional arguments:
                         working directory
   -f PCBFILE, --pcbfile PCBFILE
                         .kicad_pcb file to be modified. Default is the
-                        .kicad_pcb in the project path.
+                        .kicad_pcb in the project path. The --projectpath is
+                        overridden by a given --pcbfile
+  -o OUTPUTFILE, --output OUTPUTFILE
+                        .kicad_pcb file to write the modified PCB file to.
+                        Default is the input file, see --pcbfile Use this
+                        option, if you do not want to overwrite the original
+                        file
+  --version             show program's version number and exit
 
 GitHub: https://github.com/KarlZeilhofer/kicad-models-updater
 ```
@@ -56,16 +64,20 @@ Various warnings are reported, if something isn't as expected:
 * missing fp-lib-table
 * missing footprint library
 * missing 3D model file
-* ...
+* multiple model entries in library or PCB footprint
+
+## Installation
+The file `kicad-models-updater.py` should be made executable. I added a
+symlink to `/usr/bin/kicad-models-updater` on my Linux system, so I
+can easily call it from any project directory.
 
 ## Status
 * tested on linux with python 3.5.2
 
 ## Limitations
 * only for KiCad 4 and newer with fp-lib-table and .pretty libs
-* path substitutions are applied onyl once (`KicadCommon.py`)
+* path substitutions are applied only once (`KicadCommon.py`)
 
 
 ## License
-GPL V3
-(c) Karl Zeilhofer, www.team14.at
+GPL V3, (c) Karl Zeilhofer, www.team14.at

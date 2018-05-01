@@ -4,7 +4,12 @@ Karl Zeilhofer, www.team14.at
 ------------------------------
 
 
-# Development
+# 18.0.0, first release
+* add option `--version`
+* add installation instructions
+* updated help
+
+# Initial Development
 * CLI (command line interface) to set
   * config path for KiCad
   * set project path
@@ -36,7 +41,7 @@ Karl Zeilhofer, www.team14.at
 ## TODOs
 * use DebugTrace module (see kicad-partslist-editor)
 * test on Windows and Mac
-* test with spaces in
+* test with spaces and double quotes for
   * 3D file path
   * config path
   * project path

@@ -42,6 +42,8 @@ import platform
 
 class App:
     def __init__(self):
+        self.version = '18.0.0'
+
         self.defaultConfigPath = ''
         if 'linux' in platform.system().lower():
             self.defaultConfigPath = os.path.expanduser('~/.config/kicad') # Linux: ~/.config/kicad
@@ -76,9 +78,8 @@ class App:
                                             description="Gets paths for 3D models from the used footrints and updates it in "
                                                         "the .kicad_pcb file "
                                                         "without changing any other properties in the layout. ",
-                                         epilog="GitHub: https://github.com/KarlZeilhofer/kicad-models-updater"
+                                         epilog="GitHub: https://github.com/KarlZeilhofer/kicad-models-updater",
                                          )
-
 
         parser.add_argument("-c", "--configpath", dest='cpath', default=self.defaultConfigPath,
                             help='system wide config path, where kicad_comman and fp-lib-table can be found. '
@@ -95,6 +96,8 @@ class App:
         parser.add_argument("-o", "--output", dest='outputfile', default='',
                             help='.kicad_pcb file to write the modified PCB file to. Default is the input file, see --pcbfile'
                                  '\nUse this option, if you do not want to overwrite the original file')
+
+        parser.add_argument('--version', action='version', version=self.version)
 
         self.args = parser.parse_args();
 
