@@ -28,10 +28,11 @@ import re
 
 
 class KicadCommon:
-    envVars = {}  # environment variables
-
-    def __init__(self, path):
+    def __init__(self, path: str, projectPath: str):
+        self.envVars = {}  # environment variables, str variable -> str path
         self.fileName = path + os.path.sep + 'kicad_common'
+
+        self.envVars['KIPRJMOD'] = projectPath
 
         try:
             file = open(self.fileName, mode='r', encoding='UTF8')
@@ -71,8 +72,9 @@ class KicadCommon:
         return filePath
 
     def __str__(self):
+        sortedKeys = sorted(self.envVars.keys())
         s = ''
-        for k in self.envVars.keys():
+        for k in sortedKeys:
             s += k
             s += '='
             s += self.envVars[k]

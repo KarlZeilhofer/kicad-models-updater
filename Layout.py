@@ -44,3 +44,19 @@ class Layout:
         destModelTree = findWord(moduleTree, 'model', 0, True)[0].getParentList()
 
         modifyTree(srcModelTree, destModelTree)
+
+
+
+class Footprint:
+    def __init__(self, wordObj: Word):
+        self.pcbFP = wordObj # Word object to footprint in kicad_pcb
+        ss = wordObj.word.split(':')
+        if len(ss) != 2:
+            print('Error: invalid or legacy footprint name: ' + wordObj.word + ' in line ' + str(wordObj.lineNr+1))
+            exit()
+        self.libName = ss[0] # e.g. standardSMD
+        self.libFP = ss[1]  # e.g. R1608m
+        self.footprintLibPath = ''
+
+    def getFpId(self):
+        return self.libName + ':' + self.libFP

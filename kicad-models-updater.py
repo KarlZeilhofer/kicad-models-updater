@@ -38,15 +38,6 @@ import os
 import argparse
 import platform
 
-parser = argparse.ArgumentParser(prog="kicad-models-updater",
-                                    description="Gets paths for 3D models from the used footrints and updates it in "
-                                                "the .kicad_pcb file "
-                                                "without changing any other properties in the layout. ",
-                                 epilog="GitHub: https://github.com/KarlZeilhofer/kicad-models-updater"
-                                 )
-
-
-
 
 defaultConfigPath = ''
 if 'linux' in platform.system().lower():
@@ -58,6 +49,21 @@ elif  'mac' in platform.system().lower() or 'osx' in platform.system().lower():
 else:
     print("Warning: cannot identify operating system, needed for default config path")
 
+
+
+
+
+#######################################################################################################################
+#                                  PARSE ARGUMENTS                                                                    #
+#######################################################################################################################
+parser = argparse.ArgumentParser(prog="kicad-models-updater",
+                                    description="Gets paths for 3D models from the used footrints and updates it in "
+                                                "the .kicad_pcb file "
+                                                "without changing any other properties in the layout. ",
+                                 epilog="GitHub: https://github.com/KarlZeilhofer/kicad-models-updater"
+                                 )
+
+
 parser.add_argument("-c", "--configpath", dest='cpath', default=defaultConfigPath,
                     help='system wide config path, where kicad_comman and fp-lib-table can be found. '
                          'Default is ' + defaultConfigPath)
@@ -67,7 +73,8 @@ parser.add_argument("-p", "--projectpath", dest='ppath', default=os.getcwd(),
                          'Default is the current working directory')
 
 parser.add_argument("-f", "--pcbfile", dest='pcbfile', default='',
-                    help='.kicad_pcb file to be modified. Default is the .kicad_pcb in the project path.')
+                    help='.kicad_pcb file to be modified. Default is the .kicad_pcb in the project path. \n'
+                         'The --projectpath is overridden by a given --pcbfile')
 
 parser.add_argument("-o", "--output", dest='outputfile', default='',
                     help='.kicad_pcb file to write the modified PCB file to. Default is the input file, see --pcbfile'
@@ -87,14 +94,15 @@ if not os.path.exists(args.ppath):
     print("Error: project path does not exist: " + args.ppath)
     exit()
 
-print('ppath: ' + args.ppath)
-
 if args.pcbfile:
     if not os.path.isfile(args.pcbfile):
         print("Error: specified .kicad_pcb file doesn't exist: " + args.pcbfile)
         exit()
     else:
         args.pcbfile = os.getcwd() + os.path.sep + args.pcbfile
+        args.ppath = os.path.dirname(args.pcbfile)
+        print("Info: overriding project path with that from given PCB file")
+
 else: # search for a .kicad_pcb file
     filesAndDirs = os.listdir(args.ppath)
     count = 0
@@ -112,6 +120,7 @@ else: # search for a .kicad_pcb file
     if not os.path.isabs(args.pcbfile):
         args.pcbfile = args.ppath + os.path.sep + args.pcbfile
 
+print('ppath: ' + args.ppath)
 print('pcbfile: ' + args.pcbfile)
 
 if args.outputfile:
@@ -127,30 +136,88 @@ print()
 
 
 
+
+
+
+
+
+
+
+#######################################################################################################################
+#                                  READ ENVIRONMENT VARIABLES                                                         #
+#######################################################################################################################
 # read environment variables from kicad_common
 print('KiCad Environment Variables: ')
-kcc = KicadCommon(args.cpath)
+kcc = KicadCommon(args.cpath, args.ppath)
 print(kcc)
 print()
 
 
-class Footprint:
-    def __init__(self, wordObj: Word):
-        self.pcbFP = wordObj # Word object to footprint in kicad_pcb
-        ss = wordObj.word.split(':')
-        if len(ss) != 2:
-            print('Error: invalid or legacy footprint name: ' + wordObj.word + ' in line ' + str(wordObj.lineNr+1))
-            exit()
-        self.libName = ss[0] # e.g. standardSMD
-        self.libFP = ss[1]  # e.g. R1608m
-        self.footprintLibPath = ''
-
-    def getFpId(self):
-        return self.libName + ':' + self.libFP
 
 
+
+
+
+
+#######################################################################################################################
+#                                  READ FP-LIB-TABLE(S)                                                              #
+#######################################################################################################################
+globFplt = LibTable(args.cpath + os.path.sep + "fp-lib-table")
+list = globFplt.getLibNames()
+
+fpLibs = {} # lib-name -> lib-path
+
+if list:
+    for w in list:
+        wUri = LibGetUri(w)
+        fpLibs[w.word] = kcc.expandPath(wUri.word)
+
+
+localFplt = None
+fn = os.path.join(args.ppath, 'fp-lib-table')
+if os.path.isfile(fn): # check for local fp-lib-table
+    localFplt = LibTable(fn)
+
+    list = localFplt.getLibNames()
+
+    if list:
+        for w in list:
+            if w.word in fpLibs.keys():
+                print("Warning: Overriding lib " + w.word + ' with entry from local fp-lib-table')
+            uri = LibGetUri(w)
+            fpLibs[w.word] = kcc.expandPath(uri.word)
+            # TODO 1: fails for this line in fp-lib-table:
+            #   (lib (name dsd-cc-eagle)(type KiCad)(uri "$(KIPRJMOD)/dsd-cc-eagle.pretty")(options "")(descr ""))
+            # vermutlich wegen doppelhochkomma!
+else:
+    print("Info: No fp-lib-table in project path found")
+
+
+print('Libs in fp-lib-table(s): ')
+if list:
+    sortedKeys = sorted(fpLibs.keys())
+
+    for lib in sortedKeys:
+        print(lib + '\t\t' + fpLibs[lib])
+print()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#######################################################################################################################
+#                                  READ PCB FILE   and   EXTRACT ITS FOOTPRINTS                                      #
+#######################################################################################################################
 pcbFootprints = [] # list of Footprint objects
-
 print('Loading PCB file...')
 pcb = Layout(args.pcbfile)
 # pcb.mod.printTree()
@@ -165,50 +232,30 @@ if l:
         pcbFootprints.append(Footprint(w))
 print()
 
-
-globFplt = LibTable(args.cpath + os.path.sep + "fp-lib-table")
-list = globFplt.getLibNames()
-
-fpLibs = {} # lib-name -> lib-path
-
-if list:
-    for w in list:
-        wUri = LibGetUri(w)
-        fpLibs[w.word] = kcc.expandPath(wUri.word)
-
-
-localFplt = None
-if os.path.isfile('fp-lib-table'): # check for local fp-lib-table
-    localFplt = LibTable("fp-lib-table")
-
-    list = localFplt.getLibNames()
-
-    if list:
-        for w in list:
-            if w.word in fpLibs.keys():
-                print("Warning: Overriding lib " + w.word + ' with entry from local fp-lib-table')
-            fpLibs[w.word] = kcc.expandPath(LibGetUri(w).word)
-
-else:
-    print("Info: No fp-lib-table in project path found")
-
-    
-print('Libs in fp-lib-table: ')
-if list:
-    for lib in fpLibs.keys():
-        print(lib + '\t\t' + fpLibs[lib])
-print()
-
-
+# set footprintLibPath for all footprints on PCB:
 for fp in pcbFootprints:
     fp.footprintLibPath = fpLibs[fp.libName]
 
 
-print()
 
+
+
+
+
+
+
+
+
+
+
+
+
+#######################################################################################################################
+#                                  LOAD  FOOTPRINTS that are USED IN PCB FILE                                        #
+#######################################################################################################################
 print('Loading needed footprint files ...')
 usedFpSExpr = {} ## Dict[str, SExpressionModifier]
-for fp in pcbFootprints:
+for fp in sorted(pcbFootprints):
     id = fp.getFpId()
     if id not in usedFpSExpr.keys():
         fn = fp.footprintLibPath + os.path.sep + fp.libFP + '.kicad_mod'
@@ -216,10 +263,22 @@ for fp in pcbFootprints:
             usedFpSExpr[id] = SExpressionModifier(fn)
             print('  ' + id + '\t\t' + fn)
         else:
-            print("Error: Cannot open footprint for " + fp.getFpId() + ': ' + fn)
+            print("Warning: Cannot open footprint for " + fp.getFpId() + ': ' + fn +
+                  "  These footprints will not be touched in the PCB file.")
 print('ok\n')
 
 
+
+
+
+
+
+
+
+
+#######################################################################################################################
+#                                  MODIFY DATA in PCB FILE's S-EXPRESSIONS                                           #
+#######################################################################################################################
 print('Updating data in PCB file...')
 for fp in pcbFootprints:
     id = fp.getFpId()
@@ -241,7 +300,8 @@ for fp in pcbFootprints:
 
             pcb.update3dModel(model3d, fp.pcbFP)
         else:
-            print("Trace: skip footprint " + usedFpSExpr[id].fileName)
+            print("Trace: skip footprint " + usedFpSExpr[id].fileName  +
+                  "  It has no model entry, which could be updated.")
     else:
         print("Info: Cannot update model for " + id) # this happens e.g. for eagle-libs
 
@@ -254,3 +314,18 @@ if args.outputfile:
 print('Writing to PCB file: ' + fn)
 pcb.sexp.writeTree(fn)
 print('ok\n')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
