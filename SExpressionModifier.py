@@ -9,18 +9,11 @@ import copy
 # so a simple diff can show the changes.
 
 class SExpressionModifier:
-
-
-    _filename = ""
-    _content = []
-    _tree = [[]]
-
-    footprints = [] # list of Footprint objects, found in the file
-
-
     # opens the file and reads all the lines into _content
     def __init__(self, fileName):
         self._filename = fileName
+        self._content = [] # contains all lines of the file
+        self._tree = [] # list of Word objects and sublists
 
         try:
             file = open(fileName, mode='r', encoding='UTF8')
@@ -29,6 +22,8 @@ class SExpressionModifier:
             for line in file:
                 self._content.append(line)
                 nr += 1
+
+            file.close()
 
             self.readTree()
 
@@ -116,22 +111,13 @@ class SExpressionModifier:
 
 
 class Word:
-    word = ""
-    lineNr = 0
-    charNr = 0
-    level = 0
-    path = []
-    originalWord = '' # if not empty, this word has been modified
-    quoted = False
-    root = None
-
-
     def __init__(self, word, lineNr, charNr, quoted, level, path, root):
         self.word = word
         self.lineNr = lineNr
         self.charNr = charNr
         self.level = level
         self.path = copy.deepcopy(path)
+        self.originalWord = ''
         self.quoted = quoted
         self.root = root
 
@@ -146,7 +132,7 @@ class Word:
             s += '/'
         return s
 
-    def setWord(self, word):
+    def modify(self, word: str):
         if word is not self.word:
             if not self.originalWord:
                 self.originalWord = self.word
@@ -167,10 +153,11 @@ class Word:
 
 
     # returs the list, which contains the given Word object
-    def getParentList(self):
+    def getParentList(self, levelsUp = 1):
         leaf = self.root
-        path = self.path
-        path.pop()
+        path = copy.deepcopy(self.path)
+        for i in range(levelsUp):
+            path.pop()
 
         for i in path:
             leaf = leaf[i]
@@ -183,10 +170,17 @@ class Word:
         if self.path[-1] is not 0:
             return None
         pl = self.getParentList()
-        if not pl: # parent list is empty
+        if not pl:  # parent list is empty
             return None
         if isinstance(pl[1], Word):
-            return pl[1].word
+            return pl[1]
+        else:
+            return None
+
+    def getValueStr(self):
+        w = self.getValue()
+        if w:
+            return w.word
         else:
             return None
 
@@ -196,7 +190,7 @@ class Word:
 # word ... must match exactly
 # index ... number of path leaf (default = 0)
 # recursive ... search in sub and sub/sub lists too
-def findWord(root, word, index, recursive = False):
+def findWord(root: list, word: str, index: int, recursive: bool = False):
     resultList = []
     treeIter = TreeIterator(root, recursive)
 
@@ -206,14 +200,25 @@ def findWord(root, word, index, recursive = False):
 
     return resultList
 
+# Update a given tree dest with the values of the tree src
+# both have to have the same structure
+# src, dest ... list of Word objects and sublists
+# TODO check for identical structure
+def modifyTree(src: list, dest: list):
+    srcIter = TreeIterator(src, True)
+    destIter = TreeIterator(dest, True)
+
+    for srcWord, destWord in zip(srcIter,destIter):
+        if destWord.word != srcWord.word:
+            print('Trace: modify:' + destWord.word + ' -> ' + srcWord.word)
+        destWord.modify(srcWord.word)
+
+
 
 class TreeIterator:
-    currentPath = [-1] # list of integers
-    currentPathLists = [] # stack of lists, for current path
-    root = None
-    recursive = False
-
     def __init__(self, root, recursive = False):
+        self.currentPath = [-1] # list of integers
+        self.currentPathLists = [] # stack of lists, for current path
         self.root = root
         self.recursive = recursive
 

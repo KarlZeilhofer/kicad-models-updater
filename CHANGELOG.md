@@ -13,6 +13,7 @@ Karl Zeilhofer, www.team14.at
   * parses a S-Expression file
   * keeps structure of file
   * each word can be modified in place
+* refactored project name to 'kicad-models-updater'
 
 ## TODOs
 * write file
