@@ -1,3 +1,24 @@
+#!/usr/bin/python3
+
+
+# kicad-models-updater
+# updates a KiCad PCB file, if the footprint libs have been changed
+# Copyright (C) 2018 Karl Zeilhofer, www.team14.at
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
 
 
 # This script updates the 3D models in a kicad_pcb file.
@@ -5,9 +26,8 @@
 # reads out their model record, and writes this into the kicad_pcb file.
 # Note: this can also be done by the GUI (at least with KiCad 4 and later), but
 #   there also the location and size of the labels is reset, which is probably not
-#   what the user inteded, if he only wants to reload the paths to the 3D models.
+#   what the user intended, if he only wants to reload the paths to the 3D models.
 
-# (c) 2018 by Karl Zeilhofer, www.team14.at
 
 # License: Public Domain
 
@@ -16,8 +36,7 @@ from LibTable import *
 from KicadCommon import *
 import os
 import argparse
-from typing import List, Dict
-
+import platform
 
 parser = argparse.ArgumentParser(prog="kicad-models-updater",
                                     description="Gets paths for 3D models from the used footrints and updates it in "
@@ -26,7 +45,19 @@ parser = argparse.ArgumentParser(prog="kicad-models-updater",
                                  epilog="GitHub: https://github.com/KarlZeilhofer/kicad-models-updater"
                                  )
 
-defaultConfigPath = os.path.expanduser('~/.config/kicad')
+
+
+
+defaultConfigPath = ''
+if 'linux' in platform.system().lower():
+    defaultConfigPath = os.path.expanduser('~/.config/kicad') # Linux: ~/.config/kicad
+elif 'win' in platform.system().lower():
+    defaultConfigPath = os.path.join(os.getenv('APPDATA'), '\\kicad') # Windows: %APPDATA%\kicad
+elif  'mac' in platform.system().lower() or 'osx' in platform.system().lower():
+    defaultConfigPath = os.path.expanduser('$HOME/Library/Preferences/kicad') # macOS: $HOME/Library/Preferences/kicad
+else:
+    print("Warning: cannot identify operating system, needed for default config path")
+
 parser.add_argument("-c", "--configpath", dest='cpath', default=defaultConfigPath,
                     help='system wide config path, where kicad_comman and fp-lib-table can be found. '
                          'Default is ' + defaultConfigPath)
@@ -37,6 +68,10 @@ parser.add_argument("-p", "--projectpath", dest='ppath', default=os.getcwd(),
 
 parser.add_argument("-f", "--pcbfile", dest='pcbfile', default='',
                     help='.kicad_pcb file to be modified. Default is the .kicad_pcb in the project path.')
+
+parser.add_argument("-o", "--output", dest='outputfile', default='',
+                    help='.kicad_pcb file to write the modified PCB file to. Default is the input file, see --pcbfile'
+                         '\nUse this option, if you do not want to overwrite the original file')
 
 args = parser.parse_args();
 
@@ -64,7 +99,7 @@ else: # search for a .kicad_pcb file
     filesAndDirs = os.listdir(args.ppath)
     count = 0
     for i in filesAndDirs:
-        if i.endswith('.kicad_pcb'):
+        if i.endswith('.kicad_pcb') and not i.startswith('_autosave-'):
             args.pcbfile = i
             count += 1
     if not args.pcbfile:
@@ -78,6 +113,15 @@ else: # search for a .kicad_pcb file
         args.pcbfile = args.ppath + os.path.sep + args.pcbfile
 
 print('pcbfile: ' + args.pcbfile)
+
+if args.outputfile:
+    fn = args.outputfile
+    try:
+        file = open(fn, mode='w', encoding='UTF8')
+        file.close()
+    except Exception as e:
+        print('Error: cannot open output file for writing: ' + fn)
+        exit()
 
 print()
 
@@ -94,6 +138,9 @@ class Footprint:
     def __init__(self, wordObj: Word):
         self.pcbFP = wordObj # Word object to footprint in kicad_pcb
         ss = wordObj.word.split(':')
+        if len(ss) != 2:
+            print('Error: invalid or legacy footprint name: ' + wordObj.word + ' in line ' + str(wordObj.lineNr+1))
+            exit()
         self.libName = ss[0] # e.g. standardSMD
         self.libFP = ss[1]  # e.g. R1608m
         self.footprintLibPath = ''
@@ -104,8 +151,10 @@ class Footprint:
 
 pcbFootprints = [] # list of Footprint objects
 
+print('Loading PCB file...')
 pcb = Layout(args.pcbfile)
 # pcb.mod.printTree()
+print()
 
 
 print('Footprints on PCB:')
@@ -174,8 +223,34 @@ print('ok\n')
 print('Updating data in PCB file...')
 for fp in pcbFootprints:
     id = fp.getFpId()
-    model3d = findWord(usedFpSExpr[id]._tree, 'model', 0, True)
+    if id in usedFpSExpr.keys():
+        result = findWord(usedFpSExpr[id]._tree, 'model', 0, True)
 
-    pcb.update3dModel(model3d[0], fp.pcbFP)
-    
+        if result:
+            if len(result) > 1:
+                print('Error: multiple models defined in ' + usedFpSExpr[id].fileName)
+            model3d = result[0]
+
+            # test, if new model file can be found on the system:
+            fn = model3d.getValue().word
+            if not os.path.isfile(kcc.expandPath(fn)):
+                print('Warning: cannot find new 3d model file: ' + fn)
+                print('         please check environment variables in ' + kcc.fileName)
+                print('         or the used footprint: ' + usedFpSExpr[id].fileName)
+                print('         or the used 3d models library.')
+
+            pcb.update3dModel(model3d, fp.pcbFP)
+        else:
+            print("Trace: skip footprint " + usedFpSExpr[id].fileName)
+    else:
+        print("Info: Cannot update model for " + id) # this happens e.g. for eagle-libs
+
+print('ok\n')
+
+fn = pcb.fileName
+if args.outputfile:
+    fn = args.outputfile
+
+print('Writing to PCB file: ' + fn)
+pcb.sexp.writeTree(fn)
 print('ok\n')

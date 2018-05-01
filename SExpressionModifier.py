@@ -1,3 +1,20 @@
+# This file is part of kicad-models-updater
+# Copyright (C) 2018 Karl Zeilhofer, www.team14.at
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
 
 import copy
 
@@ -11,7 +28,7 @@ import copy
 class SExpressionModifier:
     # opens the file and reads all the lines into _content
     def __init__(self, fileName):
-        self._filename = fileName
+        self.fileName = fileName
         self._content = [] # contains all lines of the file
         self._tree = [] # list of Word objects and sublists
 
@@ -47,11 +64,11 @@ class SExpressionModifier:
         for string in self._content:
             charNr = 0
             for char in string:
-                if char is '(' and not in_str:
+                if char == '(' and not in_str:
                     self._tree.append([])
                     path.append(0)
                     level += 1
-                elif char is ')' and not in_str:
+                elif char == ')' and not in_str:
                     if word:
                         self._tree[-1].append(Word(word, lineNr, wordStart, wordIsQuoted, level, path, self._tree[0]))
                         path[-1] += 1
@@ -66,7 +83,7 @@ class SExpressionModifier:
                         self._tree[-1].append(Word(word, lineNr, wordStart, wordIsQuoted, level, path, self._tree[0]))
                         path[-1] += 1
                         word = ''
-                elif char is '\"':
+                elif char == '\"':
                     in_str = not in_str
                 else:
                     if not word:
@@ -82,11 +99,24 @@ class SExpressionModifier:
         self._tree = self._tree[0]
 
     def writeTree(self, fileName):
-        # TODO
-        # die listen müssen rückwärts durchlaufen werden, sodass der index Word::charNr gültig ist.
-        # und somit die jeweiligen zeilen aktualisiert werden.
-        # dann können alle zeilen in die datei geschrieben werden.
-        print("TODO: wirteTree()")
+        # update content lines in reverse order
+        # reverse order needed so the saved charNr for a word is correct.
+        revIter = TreeIteratorReverse(self._tree, True)
+        for w in revIter:
+            lNr = w.lineNr
+            oldLine = self._content[lNr]
+            self._content[lNr] = w.updateLine(oldLine)
+
+            if self._content[lNr] != oldLine:
+                print('Info: modified line #' + str(lNr) + ': ' + self._content[lNr], end='')
+
+        # write to file:
+        try:
+            file = open(fileName, mode='w', encoding='UTF8')
+            file.writelines(self._content)
+            file.close()
+        except Exception as e:
+            print(e)
 
     def printTree(self):
         treeIter = TreeIterator(self._tree, True)
@@ -113,7 +143,7 @@ class SExpressionModifier:
 class Word:
     def __init__(self, word, lineNr, charNr, quoted, level, path, root):
         self.word = word
-        self.lineNr = lineNr
+        self.lineNr = lineNr # counting from 0
         self.charNr = charNr
         self.level = level
         self.path = copy.deepcopy(path)
@@ -133,7 +163,7 @@ class Word:
         return s
 
     def modify(self, word: str):
-        if word is not self.word:
+        if word != self.word:
             if not self.originalWord:
                 self.originalWord = self.word
             self.word = word
@@ -146,8 +176,8 @@ class Word:
             repl = self.word
             if not self.quoted and self.word.count(' ') > 0:
                 repl = '\"' + repl + '\"'
-            part2.replace(self.originalWord, repl, 1)
-            return part1+part2
+            part2 = part2.replace(self.originalWord, repl, 1)
+            line = part1 + part2
 
         return line
 
@@ -167,7 +197,7 @@ class Word:
     # returns the word string next to a "Header Word Object" (index = 0)
     # returns None, if that would be a list, or self is not a "Header Word"
     def getValue(self):
-        if self.path[-1] is not 0:
+        if self.path[-1] != 0:
             return None
         pl = self.getParentList()
         if not pl:  # parent list is empty
@@ -210,8 +240,8 @@ def modifyTree(src: list, dest: list):
 
     for srcWord, destWord in zip(srcIter,destIter):
         if destWord.word != srcWord.word:
-            print('Trace: modify:' + destWord.word + ' -> ' + srcWord.word)
-        destWord.modify(srcWord.word)
+            print('  Info: modify: ' + destWord.word + ' -> ' + srcWord.word)
+            destWord.modify(srcWord.word)
 
 
 
@@ -237,6 +267,46 @@ class TreeIterator:
                 candidate = self.currentPathLists[-1][self.currentPath[-1]]
                 if isinstance(candidate, list) and self.recursive:
                     self.currentPath.append(-1)
+                    self.currentPathLists.append(candidate)
+            else: # we are at the end of the current sublist
+                self.currentPath.pop()
+                self.currentPathLists.pop()
+
+                if not self.currentPathLists:
+                    raise StopIteration
+
+        return candidate
+
+    def __str__(self):
+        s = '/'
+        for i in self.currentPath:
+            s += str(i)
+            s += '/'
+        return s
+
+
+class TreeIteratorReverse:
+    def __init__(self, root, recursive = False):
+        self.currentPath = [+1] # list of integers
+        self.currentPathLists = [] # stack of lists, for current path
+        self.root = root
+        self.recursive = recursive
+
+    def __iter__(self):
+        self.currentPath = [+1]
+        self.currentPathLists = []
+        self.currentPathLists.append(self.root)
+        return self
+
+    def __next__(self):
+        candidate = []
+
+        while isinstance(candidate, list):
+            if self.currentPath[-1]-1 >= 0:
+                self.currentPath[-1] -= 1
+                candidate = self.currentPathLists[-1][self.currentPath[-1]]
+                if isinstance(candidate, list) and self.recursive:
+                    self.currentPath.append(len(candidate)-1 +1)
                     self.currentPathLists.append(candidate)
             else: # we are at the end of the current sublist
                 self.currentPath.pop()

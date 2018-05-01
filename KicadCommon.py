@@ -1,13 +1,27 @@
+# This file is part of kicad-models-updater
+# Copyright (C) 2018 Karl Zeilhofer, www.team14.at
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
 
 
 # file parser for kicad_common,
 # with is in ~/config/kicad
 #
 # Limitations
-# expandPath supports only one replacement
-
-
-
+# expandPath supports only one replacement at a time
 
 import os
 import re
@@ -17,10 +31,10 @@ class KicadCommon:
     envVars = {}  # environment variables
 
     def __init__(self, path):
-        fileName = path + os.path.sep + 'kicad_common'
+        self.fileName = path + os.path.sep + 'kicad_common'
 
         try:
-            file = open(fileName, mode='r', encoding='UTF8')
+            file = open(self.fileName, mode='r', encoding='UTF8')
 
             nr = 0
             inEnvVarGroup = False
@@ -36,7 +50,7 @@ class KicadCommon:
                                 if value.endswith('\"'):
                                     value = value[1:-1]
                                 else:
-                                    print("Error: missing 2nd \" in " + fileName)
+                                    print("Error: missing 2nd \" in " + self.fileName)
                             self.envVars[key] = value
 
                     elif '[EnvironmentVariables]' in line:
