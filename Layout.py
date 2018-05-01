@@ -27,9 +27,13 @@ class Layout:
     # returns a list of Word objects, which contain the relevant path to a 'module' in the file
     def getFootprints(self):
         l = []
-        n = self.sexp.findWord('module', 0)
-        for w in n:
-            l.append(w.getValue())
+        searchResults = self.sexp.findWord('module', 0)
+        for w in searchResults:
+            v = w.getValue()
+            if v != None:
+                l.append(v)
+            else:
+                print("Warning: got None in search results for 'module'.getValue(), line nr " + str(w.lineNr))
         return l
 
     def write(self, fileName = ''):
@@ -41,9 +45,14 @@ class Layout:
         srcModelTree = srcModel.getParentList()
 
         moduleTree = destPcbModule.getParentList()
-        destModelTree = findWord(moduleTree, 'model', 0, True)[0].getParentList()
-
-        modifyTree(srcModelTree, destModelTree)
+        searchResults = findWord(moduleTree, 'model', 0, True)
+        if len(searchResults) > 1:
+            print("Error: multiple model in a PCB footprint in line " + str(destPcbModule.lineNr+1))
+        elif len(searchResults) == 0:
+            print("Warning: tried to update 3D model in a footprint without any model entry in line " + str(destPcbModule.lineNr+1))
+        else:
+            destModelTree = searchResults[0].getParentList()
+            modifyTree(srcModelTree, destModelTree)
 
 
 

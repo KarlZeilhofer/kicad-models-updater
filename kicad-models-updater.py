@@ -214,6 +214,9 @@ class App:
         # pcb.mod.printTree()
         print()
 
+        # TODO 0: remove debug code
+        #self.pcb.sexp.printTree() # used only for debugging
+        #exit()
 
         print('Footprints on PCB:')
         l = self.pcb.getFootprints()
@@ -240,7 +243,7 @@ class App:
                 fn = fp.footprintLibPath + os.path.sep + fp.libFP + '.kicad_mod'
                 if os.path.isfile(fn):
                     self.usedFpSExpr[id] = SExpressionModifier(fn)
-                    print(id.ljust(30, ' ') + '\t\t' + fn)
+                    print(id.ljust(50, ' ') + '\t\t' + fn)
                 else:
                     print("Warning: Cannot open footprint for " + fp.getFpId() + ': ' + fn +
                           "  These footprints will not be touched in the PCB file.")
@@ -269,11 +272,12 @@ class App:
                         print('         please check environment variables in ' + self.kcc.fileName)
                         print('         or the used footprint: ' + self.usedFpSExpr[id].fileName)
                         print('         or the used 3d models library.')
+                    del fn
 
-                        self.pcb.update3dModel(model3d, fp.pcbFP)
-                else:
-                    print("Trace: skip footprint " + self.usedFpSExpr[id].fileName  +
-                          "  It has no model entry, which could be updated.")
+                    self.pcb.update3dModel(model3d, fp.pcbFP)
+                #else: # TODO 3: enable this again with debug trace module and verbosity levels
+                #    print("Trace: skip footprint " + self.usedFpSExpr[id].fileName  +
+                #          "  It has no model entry, which could be updated.")
             else:
                 print("Info: Cannot update model for " + id) # this happens e.g. for eagle-libs
 

@@ -29,7 +29,9 @@ Karl Zeilhofer, www.team14.at
 * fixed use of local fp-lib-table
 * refactored main script into a class App
 * add output formatting with ljust()
-
+* major bugfix: fixed parser for escaped double quote!
+* Error for PCB footprints with multiple models
+* warning for PCB footrpints without any footprint id (e.g. @HOLE0)
 
 ## TODOs
 * use DebugTrace module (see kicad-partslist-editor)

@@ -63,6 +63,7 @@ class SExpressionModifier:
         wordIsQuoted = False
         for string in self._content:
             charNr = 0
+            lastChar = ' ' # needed to detect escaped double quotes within a word
             for char in string:
                 if char == '(' and not in_str:
                     self._tree.append([])
@@ -83,7 +84,7 @@ class SExpressionModifier:
                         self._tree[-1].append(Word(word, lineNr, wordStart, wordIsQuoted, level, path, self._tree[0]))
                         path[-1] += 1
                         word = ''
-                elif char == '\"':
+                elif char == '\"' and lastChar != '\\':
                     in_str = not in_str
                 else:
                     if not word:
@@ -92,6 +93,7 @@ class SExpressionModifier:
                     word += char
 
                 charNr += 1
+                lastChar = char
             # endf for each char
             lineNr += 1
         #end for each string
@@ -123,7 +125,6 @@ class SExpressionModifier:
 
         for word in treeIter:
             print(word)
-            print(treeIter)
 
     # prints a list of Word objects (recursively)
     def printBranch(self, root, indent):
@@ -225,7 +226,7 @@ def findWord(root: list, word: str, index: int, recursive: bool = False):
     treeIter = TreeIterator(root, recursive)
 
     for wordObj in treeIter:
-        if treeIter.currentPath[-1] == index and wordObj.word == word:
+        if (treeIter.currentPath[-1] == index) and (wordObj.word == word):
             resultList.append(wordObj)
 
     return resultList
