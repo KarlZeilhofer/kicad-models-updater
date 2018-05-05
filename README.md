@@ -23,7 +23,7 @@ one of them with `-c CONFIGPATH`.
 ### Help
 ```
 usage: kicad-models-updater [-h] [-c CPATH] [-p PPATH] [-f PCBFILE]
-                            [-o OUTPUTFILE] [--version]
+                            [-o OUTPUTFILE] [--dryrun] [--version]
 
 Gets paths for 3D models from the used footrints and updates it in the
 .kicad_pcb file without changing any other properties in the layout.
@@ -47,6 +47,7 @@ optional arguments:
                         Default is the input file, see --pcbfile Use this
                         option, if you do not want to overwrite the original
                         file
+  --dryrun              run through all steps, except writing the output file
   --version             show program's version number and exit
 
 GitHub: https://github.com/KarlZeilhofer/kicad-models-updater

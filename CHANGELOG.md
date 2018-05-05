@@ -4,6 +4,11 @@ Karl Zeilhofer, www.team14.at
 ------------------------------
 
 
+# 18.0.1
+* support $() and ${} for variable replacement
+* bugfix on file modification: add quotes, if modification contains braces
+* add --dryrun flag
+
 # 18.0.0, first release
 * add option `--version`
 * add installation instructions
@@ -39,6 +44,7 @@ Karl Zeilhofer, www.team14.at
 * warning for PCB footrpints without any footprint id (e.g. @HOLE0)
 
 ## TODOs
+* fix parenthesis for variables deref, see kicad forum
 * use DebugTrace module (see kicad-partslist-editor)
 * test on Windows and Mac
 * test with spaces and double quotes for

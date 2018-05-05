@@ -42,13 +42,13 @@ import platform
 
 class App:
     def __init__(self):
-        self.version = '18.0.0'
+        self.version = '18.0.1'
 
         self.defaultConfigPath = ''
         if 'linux' in platform.system().lower():
             self.defaultConfigPath = os.path.expanduser('~/.config/kicad') # Linux: ~/.config/kicad
         elif 'win' in platform.system().lower():
-            self.defaultConfigPath = os.path.join(os.getenv('APPDATA'), '\\kicad') # Windows: %APPDATA%\kicad
+            self.defaultConfigPath = os.path.join(os.getenv('APPDATA'), 'Roaming\\kicad') # Windows: %APPDATA%\kicad
         elif  'mac' in platform.system().lower() or 'osx' in platform.system().lower():
             self.defaultConfigPath = os.path.expanduser('$HOME/Library/Preferences/kicad') # macOS: $HOME/Library/Preferences/kicad
         else:
@@ -68,14 +68,17 @@ class App:
         self.readPcbFile()
         self.loadNeededFootprintFiles()
         self.modifyPcbData()
-        self.writePcbFile()
+        if self.args.dryrun:
+            print('skipping write to file, --dryrun was set')
+        else:
+            self.writePcbFile()
 
     def parseArguments(self):
         #######################################################################################################################
         #                                  PARSE ARGUMENTS                                                                    #
         #######################################################################################################################
         parser = argparse.ArgumentParser(prog="kicad-models-updater",
-                                            description="Gets paths for 3D models from the used footrints and updates it in "
+                                            description="kicad-models-updater V" + self.version + ": Gets paths for 3D models from the used footrints and updates it in "
                                                         "the .kicad_pcb file "
                                                         "without changing any other properties in the layout. ",
                                          epilog="GitHub: https://github.com/KarlZeilhofer/kicad-models-updater",
@@ -96,6 +99,9 @@ class App:
         parser.add_argument("-o", "--output", dest='outputfile', default='',
                             help='.kicad_pcb file to write the modified PCB file to. Default is the input file, see --pcbfile'
                                  '\nUse this option, if you do not want to overwrite the original file')
+
+        parser.add_argument('--dryrun', action='store_true',
+                            help='run through all steps, except writing the output file')
 
         parser.add_argument('--version', action='version', version=self.version)
 
@@ -257,7 +263,7 @@ class App:
         #######################################################################################################################
         #                                  MODIFY DATA in PCB FILE's S-EXPRESSIONS                                           #
         #######################################################################################################################
-        print('Updating data in PCB file...')
+        print('Updating data for PCB file...')
         for fp in self.pcbFootprints:
             id = fp.getFpId()
             if id in self.usedFpSExpr.keys():
@@ -282,7 +288,8 @@ class App:
                 #    print("Trace: skip footprint " + self.usedFpSExpr[id].fileName  +
                 #          "  It has no model entry, which could be updated.")
             else:
-                print("Info: Cannot update model for " + id) # this happens e.g. for eagle-libs
+                print("Info: Cannot update model for " + id + '\n'
+                        + id + '.pretty was not loaded, see messages above') # this happens e.g. for eagle-libs
 
         print('ok\n')
 
@@ -303,3 +310,4 @@ class App:
 
 app = App()
 app.run()
+

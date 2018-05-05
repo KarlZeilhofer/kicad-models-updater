@@ -65,6 +65,9 @@ class KicadCommon:
     def expandPath(self, filePath):
         results = re.search('(.*)\${(.+?)}(.*)', filePath)
 
+        if not results:
+            results = re.search('(.*)\$\((.+?)\)(.*)', filePath)
+
         if results:
             if results.group(2) in self.envVars.keys():
                 return results.group(1) + self.envVars[results.group(2)] + results.group(3)

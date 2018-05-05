@@ -175,7 +175,7 @@ class Word:
             part2 = str(line[self.charNr:])
 
             repl = self.word
-            if not self.quoted and self.word.count(' ') > 0:
+            if not self.quoted and (' ' in self.word or '(' in self.word or ')' in self.word):
                 repl = '\"' + repl + '\"'
             part2 = part2.replace(self.originalWord, repl, 1)
             line = part1 + part2
